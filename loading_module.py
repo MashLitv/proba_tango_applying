@@ -12,7 +12,8 @@ from threading import Thread
 #namespace = Namespace()
 
 from progress_dialog import ProgressDialog
-from tango_applier import TangoApplier
+#from tango_applier import TangoApplier
+from proba4 import TangoApplier
 
 
 var_list = {
@@ -59,6 +60,7 @@ class Loading(QObject):
         #self.progBar.forceShow()
 
     reading_tango_completed_signal = pyqtSignal(dict)
+    tango_loading_completed_signal = pyqtSignal()
 
     def start_read_from_tango(self, loading_list):
         self.tango_applier = TangoApplier()
@@ -75,6 +77,7 @@ class Loading(QObject):
         self.tango_applier.end_writing_signal.connect(self.end_tango_dev_writing)
         self.tango_applier.stop_load_snapshot_signal.connect(self.stop_tango_snapshot_loading)
         self.tango_applier.error_signal.connect(self.tango_error)
+        self.tango_loading_completed_signal.connect(self.reading_tango_completed)
         #self.tango_applier.read_completed_signal.connect(self.reading_tango_completed)
 
         self.error_list = {}
@@ -89,7 +92,8 @@ class Loading(QObject):
         self.num = 0
         self.count = 0        
 
-    def reading_tango_completed(self, value_list):
+    def reading_tango_completed(self):
+        value_list = self.tango_applier.get_values()
         if self.num == self.count:
             msgBox = QMessageBox()
             if not self.error_list:    
@@ -118,6 +122,7 @@ class Loading(QObject):
         self.tango_applier.end_writing_signal.connect(self.end_tango_dev_writing)
         self.tango_applier.stop_save_snapshot_signal.connect(self.stop_tango_snapshot_saving)
         self.tango_applier.error_signal.connect(self.tango_error)
+        self.tango_loading_completed_signal.connect(self.tango_writing_completed)
         #self.tango_applier.writing_completed_signal.connect(self.tango_writing_completed)
 
         self.error_list = {}
@@ -135,6 +140,8 @@ class Loading(QObject):
         self.progBar.set_done_item(dev)
         self.num +=1
         self.progBar.setValue(self.num)
+        if self.num == self.count:
+            self.tango_loading_completed_signal.emit()
 
     def tango_error(self, dev, error):
         dev_name = '/'.join(dev.split('/')[:-1])
@@ -144,6 +151,8 @@ class Loading(QObject):
         self.progBar.set_loading_error(dev)
         self.num +=1
         self.progBar.setValue(self.num)
+        if self.num == self.count:
+            self.tango_loading_completed_signal.emit()
 
     def tango_writing_completed(self):
         if self.num == self.count:

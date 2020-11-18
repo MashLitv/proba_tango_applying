@@ -111,6 +111,9 @@ class TangoApplier(QObject):
         return dev_attr_value[name]
         #time.sleep(1) 
 
+    def get_values(self):
+        return self.value_list
+
 
 
 class Loading(QObject):
