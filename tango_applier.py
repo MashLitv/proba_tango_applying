@@ -57,7 +57,7 @@ class TangoApplier(QObject):
 
     def save_snapshot(self, loading_list, value_list):
         self.error_list = {}
-        dev_list, value_list = parse_loading_list(loading_list, value_list)
+        dev_list, value_list = self.parse_loading_list(loading_list, value_list)
         for dev_name, attrs in dev_list.items():
             dev = tango.DeviceProxy(dev_name)
             #print(attrs)
@@ -67,18 +67,20 @@ class TangoApplier(QObject):
             for attr in attrs:
                 try:
                     id_= dev.write_attribute_asynch(attr, value_list[dev_name+'/'+attr])
-                    self.begin_writing_signal.emit(dev+'/'+attr)
+                    self.begin_writing_signal.emit(dev_name+'/'+attr)
                     id_list[id_] = dev_name+'/'+attr
                 except Exception as e:
                     self.error_list[dev_name+"/"+attr] = e
-                    self.error_signal.emit(id_list[id_], e.args[0].desc)
+                    self.error_signal.emit(dev_name+'/'+attr, e.args[0].desc)
                 timer = threading.Thread(target=self.save_snapshot_thread, args=(id_list, dev, dev_name))
                 timer.start()
 
     def save_snapshot_thread(self, id_list, dev, dev_name):
         while id_list:
+            sleep(1)
             ids = [id_ for id_ in id_list.keys()]
             for id_ in ids:
+                #sleep(2)
                 try:
                     dev.write_attribute_reply(id_)
                     self.end_writing_signal.emit(id_list[id_])
@@ -89,7 +91,7 @@ class TangoApplier(QObject):
                     if e.args[0].reason == 'API_BadAsynReqType':
                         pass
                     else:
-                        self.error_list[dev] = e
+                        self.error_list[id_list[id_]] = e
                         self.error_signal.emit(id_list[id_], e.args[0].desc)
                         id_list.pop(id_)
             
@@ -101,7 +103,7 @@ class TangoApplier(QObject):
         self.values = {}
         self.error_list = {}
         #self.dev = tango.DeviceProxy("sys/tg_test/1")
-        dev_list = parse_loading_list(loading_list)
+        dev_list = self.parse_loading_list(loading_list)
         for dev_name, attrs in dev_list.items():
             dev = tango.DeviceProxy(dev_name)
             print(attrs)
@@ -109,9 +111,14 @@ class TangoApplier(QObject):
             #timer = threading.Thread(target=self.read_end_, args=(id_, dev_name, attrs))
             id_list = {}
             for attr in attrs:
-                id_list[dev.read_attribute_asynch(attr)] = attr
-                self.begin_writing_signal.emit(dev+'/'+attr)
-            timer = threading.Thread(target=self.read_one_end_, args=(id_list, dev, dev_name))
+                try:
+                    id_list[dev.read_attribute_asynch(attr)] = dev_name+'/'+attr
+                    self.begin_writing_signal.emit(dev_name+'/'+attr)
+                except Exception as e:
+                    self.error_list[dev_name+'/'+attr] = e
+                    self.error_signal.emit(dev_name+'/'+attr, e.args[0].desc)
+
+            timer = threading.Thread(target=self.load_snapshot_thread, args=(id_list, dev, dev_name))
             timer.start()
 
     def load_snapshot_thread(self, id_list, dev, dev_name):
@@ -120,9 +127,9 @@ class TangoApplier(QObject):
             ids = [id_ for id_ in id_list.keys()]
             for id_ in ids:
                 try:
-                    dev = id_list[id_]
+                    #sleep(2)
                     data = dev.read_attribute_reply(id_)
-                    self.values[dev] = data.value
+                    self.values[id_list[id_]] = data.value
                     #self.values[id_list[id_]] = data.value
                     self.end_writing_signal.emit(id_list[id_])
                     id_list.pop(id_)
@@ -132,7 +139,7 @@ class TangoApplier(QObject):
                     if e.args[0].reason == 'API_BadAsynReqType':
                         pass
                     else:
-                        self.error_list[dev] = e
+                        self.error_list[id_list[id_]] = e
                         self.error_signal.emit(id_list[id_], e.args[0].desc)
                         id_list.pop(id_)
                 except Exception as e:

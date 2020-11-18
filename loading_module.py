@@ -12,34 +12,32 @@ from threading import Thread
 #namespace = Namespace()
 
 from progress_dialog import ProgressDialog
-#from tango_applier import TangoApplier
-from proba4 import TangoApplier
+from tango_applier import TangoApplier
+#from proba4 import TangoApplier
 
 
-var_list = {
-    "x1" : ("path/ttr/12/attr1"),
-    "x2" : ("path/ttr/45/attr1"),
-    "x3" : ("path/ttr_d/ffr/attr1"),
-    "x4" : ("path/ttr_d/ff_12/attr1"),
-    "x5" : ("path/ttr_d/ff_12/attr2"),
-    "x6" : ("path/ttr_d/ff_12/attr3"),}
+loading_list_ = {
+    "var1":'sys/tg_test/1/ampli',
+    "var2":'sys/tg_test/1/double_scalar0',
+    "var3":'sys/tg_test/2/double_scalar0',
+    "var4":'sys/tg_test/2/float_scalar'
+}
+
+loading_list_ = {
+    "var1":'sys/tg_test/1/ampli',
+    "var2":'sys/tg_test/1/double_scalar0',
+    "var4":'sys/tg_test/1/float_scalar'
+}
+
 
 dev_attr_value = {
-    "x1" : 12,
-    "x2" : 32,
-    "x3" : 11,
-    "x4" : 24,
-    "x5" : 133,
-    "x6" : 421,}
-
-
-{
-    "x7" : ("path/ttr_x/asd","attr1"),
-    "x8" : ("path/ttr_x/my_val","attr_1"),
-    "x9" : ("path/ttr_x/fdi_1","attr_12"),
-    "x10" : ("path/ttr_x/fdi_2", "attr_3")
-
+    "var1":13,
+    "var2":2,
+    "var3":34.7,
+    "var4":155.12
 }
+
+
 
 
 class Loading(QObject):
@@ -108,7 +106,7 @@ class Loading(QObject):
 
 
 
-    def start_write_to_tango(self, loading_list):
+    def start_write_to_tango(self, loading_list, value_list):
         self.tango_applier = TangoApplier()
 
         self.num = 0
@@ -130,7 +128,7 @@ class Loading(QObject):
         for name, dev in loading_list.items():
             self.reverse_loading_list[dev] = name
 
-        self.tango_applier.save_snapshot(loading_list)
+        self.tango_applier.save_snapshot(loading_list, value_list)
 
     def begin_tango_dev_writing(self, dev):
         print(dev)
@@ -177,7 +175,7 @@ class Loading(QObject):
 
     def canel_write_to_tango(self):
         print("stop!")
-        self.tango_applier.stop_save_snapshot()
+        #self.tango_applier.stop_save_snapshot()
 
     def stop_tango_snapshot_saving(self):
         self.progBar.setValue(self.count)
@@ -200,11 +198,11 @@ class Window(QtWidgets.QWidget):
 
     def saveButton(self):
         self.loading = Loading()
-        self.loading.start_write_to_tango(var_list)
+        self.loading.start_write_to_tango(loading_list_, dev_attr_value)
 
     def loadButton(self):
         self.loading = Loading()
-        self.loading.start_read_from_tango(var_list)
+        self.loading.start_read_from_tango(loading_list_)
         self.loading.reading_tango_completed_signal.connect(self.reading_completed)
 
     def reading_completed(self, value_list):
