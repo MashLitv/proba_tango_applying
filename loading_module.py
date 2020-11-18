@@ -12,6 +12,7 @@ from threading import Thread
 #namespace = Namespace()
 
 from progress_dialog import ProgressDialog
+from tango_applier import TangoApplier
 
 
 var_list = {
@@ -38,79 +39,6 @@ dev_attr_value = {
     "x10" : ("path/ttr_x/fdi_2", "attr_3")
 
 }
-
-class TangoApplier(QObject):
-    """docstring for TangoApplier"""
-    def __init__(self, loading_list=None):
-        super(TangoApplier, self).__init__()
-        self.loading_list = loading_list
-
-    begin_writing_signal = pyqtSignal(str)
-    end_writing_signal = pyqtSignal(str)
-    stop_save_snapshot_signal = pyqtSignal()
-    stop_load_snapshot_signal = pyqtSignal()
-    writing_completed_signal = pyqtSignal()
-    read_completed_signal = pyqtSignal(dict)
-    error_signal = pyqtSignal(str, str)
-
-    def save_snapshot(self, loading_list):
-        self.loading_list = loading_list
-        self.th = Thread(target=self.save_snapshot_thread)
-        self.stop_thread = False
-        self.th.start()
-
-    def stop_save_snapshot(self):
-        self.stop_thread = True
-
-    def save_snapshot_thread(self):
-        for name, dev in self.loading_list.items():
-            if name == "x4" or name == "x6":
-                self.error_signal.emit(dev, "Error!")
-                continue
-            if self.stop_thread:
-                self.stop_save_snapshot_signal.emit()
-                break
-            self.begin_writing_signal.emit(dev)
-            self.write()
-            self.end_writing_signal.emit(dev)
-        #self.loading_list = None
-        self.stop_thread = False
-        self.writing_completed_signal.emit()
-
-    def write(self):
-        for x in range(90000000):
-                pass
-        #time.sleep(1)     
-
-    def load_snapshot(self, loading_list):
-        self.loading_list = loading_list
-        self.value_list = {}
-        self.th = Thread(target=self.load_snapshot_thread)
-        self.stop_thread = False
-        self.th.start()
-
-    def load_snapshot_thread(self):
-        for name, dev in self.loading_list.items():
-            if name == "x4" or name == "x6":
-                self.error_signal.emit(dev, "Error!")
-                continue
-            if self.stop_thread:
-                self.stop_load_snapshot_signal.emit()
-                break
-            self.begin_writing_signal.emit(dev)
-            val = self.read(name)
-            self.value_list[name] = val
-            self.end_writing_signal.emit(dev)
-        #self.loading_list = None
-        self.stop_thread = False
-        self.read_completed_signal.emit(self.value_list)
-
-    def read(self, name):
-        for x in range(90000000):
-                pass
-        return dev_attr_value[name]
-        #time.sleep(1) 
-
 
 
 class Loading(QObject):
@@ -147,7 +75,7 @@ class Loading(QObject):
         self.tango_applier.end_writing_signal.connect(self.end_tango_dev_writing)
         self.tango_applier.stop_load_snapshot_signal.connect(self.stop_tango_snapshot_loading)
         self.tango_applier.error_signal.connect(self.tango_error)
-        self.tango_applier.read_completed_signal.connect(self.reading_tango_completed)
+        #self.tango_applier.read_completed_signal.connect(self.reading_tango_completed)
 
         self.error_list = {}
         self.reverse_loading_list = {}
@@ -190,7 +118,7 @@ class Loading(QObject):
         self.tango_applier.end_writing_signal.connect(self.end_tango_dev_writing)
         self.tango_applier.stop_save_snapshot_signal.connect(self.stop_tango_snapshot_saving)
         self.tango_applier.error_signal.connect(self.tango_error)
-        self.tango_applier.writing_completed_signal.connect(self.tango_writing_completed)
+        #self.tango_applier.writing_completed_signal.connect(self.tango_writing_completed)
 
         self.error_list = {}
         self.reverse_loading_list = {}
@@ -246,24 +174,6 @@ class Loading(QObject):
         self.progBar.setValue(self.count)
         self.num = 0
         self.count = 0
-
-"""class ProgressDialog(QProgressDialog):
-    def __init__(self, labelText, cancelButtonText, minimum, maximum, parent=None):
-        super(ProgressDialog, self).__init__(labelText, cancelButtonText, minimum, maximum, parent)
-
-        #self.ui = Ui_ProgressDialog()
-        #self.ui.setupUi(self)
-
-        self.setWindowModality(Qt.ApplicationModal)
-        self.setMinimumSize(500, 400)
-
-        self.dirNameEdit = QtWidgets.QTextEdit(self)
-        self.dirNameEdit.setGeometry(QtCore.QRect(10, 30, 341, 70))
-        self.dirNameEdit.setObjectName("dirNameEdit")
-
-        self.setLabel(QLabel("text1\ntext2\ntext3"))
-        self.setMinimumDuration(1)
-        self.setWindowTitle("Please Wait") """
 
 
 class Window(QtWidgets.QWidget):

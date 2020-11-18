@@ -47,7 +47,6 @@ class TangoApplier(object):
 
 	def save_snapshot(self, loading_list, value_list):
         self.error_list = {}
-        self.dev_proxy_list = {}
         dev_list, value_list = parse_loading_list(loading_list, value_list)
         for dev_name, attrs in dev_list.items():
             dev = tango.DeviceProxy(dev_name)
