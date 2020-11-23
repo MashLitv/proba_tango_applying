@@ -5,6 +5,8 @@ from PyQt5.QtCore import pyqtSignal, Qt, QObject
 import time
 from threading import Thread
 
+from random import randint
+
 #from flask import current_app
 #from flask.signals import Namespace
 
@@ -20,13 +22,14 @@ var_list = {
     "x3" : ("path/ttr_d/ffr/attr1"),
     "x4" : ("path/ttr_d/ff_12/attr1"),
     "x5" : ("path/ttr_d/ff_12/attr2"),
-    "x6" : ("path/ttr_d/ff_12/attr3"),}
+    "x6" : ("path/ttr_d/ff_12/attr3"),
+    "x7" : ("/attr3"),
+    "x8" : ("path/"),}
 
 dev_attr_value = {
     "x1" : 12,
     "x2" : 32,
     "x3" : 11,
-    "x4" : 24,
     "x5" : 133,
     "x6" : 421,}
 
@@ -38,6 +41,14 @@ dev_attr_value = {
     "x10" : ("path/ttr_x/fdi_2", "attr_3")
 
 }
+dev_attr_value = [12, 32, 11, 24, 133, 421, 14, 13, 121, 777, 14]
+
+"""dev_attr_value = {
+    "var1":13,
+    "var2":2,
+    "var3":34.7,
+    "var4":155.12
+}"""
 
 class TangoApplier(QObject):
     """docstring for TangoApplier"""
@@ -53,8 +64,36 @@ class TangoApplier(QObject):
     read_completed_signal = pyqtSignal(dict)
     error_signal = pyqtSignal(str, str)
 
-    def save_snapshot(self, loading_list):
-        self.loading_list = loading_list
+
+    def parse_loading_list(self, loading_list, value_list=None):
+        device_list = {}
+        attr_value_list = {}
+        for name, path in loading_list.items():
+            if not path:
+                print("not path for name:", name)
+                continue
+
+            el = path.split('/')
+            dev_name = '/'.join(el[:-1])
+            attr = el[-1]
+            if not dev_name or not attr:
+                print("not attr or dev for name:", name)
+                continue
+
+            if not dev_name in device_list:
+                device_list[dev_name] = []
+            device_list[dev_name].append(attr)
+
+            if value_list is not None:
+                attr_value_list[path] = value_list[name]
+        if value_list is None:
+            return device_list
+
+        return device_list, attr_value_list
+
+
+    def save_snapshot(self, loading_list, value_list):
+        self.dev_list, value_list = self.parse_loading_list(loading_list, value_list)
         self.th = Thread(target=self.save_snapshot_thread)
         self.stop_thread = False
         self.th.start()
@@ -63,53 +102,64 @@ class TangoApplier(QObject):
         self.stop_thread = True
 
     def save_snapshot_thread(self):
-        for name, dev in self.loading_list.items():
-            if name == "x4" or name == "x6":
-                self.error_signal.emit(dev, "Error!")
-                continue
-            if self.stop_thread:
-                self.stop_save_snapshot_signal.emit()
-                break
-            self.begin_writing_signal.emit(dev)
-            self.write()
-            self.end_writing_signal.emit(dev)
-        #self.loading_list = None
+        num = 0
+        for dev_name, attrs in self.dev_list.items():
+            for attr in attrs:
+                dev = dev_name+'/'+attr
+                if num == 4 or num == 6:
+                    print("Error!")
+                    num += 1
+                    self.error_signal.emit(dev, "Error!")
+                    continue
+                if self.stop_thread:
+                    self.stop_save_snapshot_signal.emit()
+                    break
+                self.begin_writing_signal.emit(dev)
+                self.write()
+                self.end_writing_signal.emit(dev)
+                num += 1
+        #self.dev_list = None
         self.stop_thread = False
         self.writing_completed_signal.emit()
 
     def write(self):
-        for x in range(90000000):
-                pass
-        #time.sleep(1)     
+        #for x in range(90000000):
+        #        pass
+        time.sleep(randint(1, 3))
 
     def load_snapshot(self, loading_list):
-        self.loading_list = loading_list
+        self.dev_list = self.parse_loading_list(loading_list)
         self.value_list = {}
         self.th = Thread(target=self.load_snapshot_thread)
         self.stop_thread = False
         self.th.start()
 
     def load_snapshot_thread(self):
-        for name, dev in self.loading_list.items():
-            if name == "x4" or name == "x6":
-                self.error_signal.emit(dev, "Error!")
-                continue
-            if self.stop_thread:
-                self.stop_load_snapshot_signal.emit()
-                break
-            self.begin_writing_signal.emit(dev)
-            val = self.read(name)
-            self.value_list[name] = val
-            self.end_writing_signal.emit(dev)
-        #self.loading_list = None
+        num = 0
+        for dev_name, attrs in self.dev_list.items():
+            for attr in attrs:
+                dev = dev_name+'/'+attr
+                if num == 4 or num == 6:
+                    self.error_signal.emit(dev, "Error!")
+                    num += 1
+                    continue
+                if self.stop_thread:
+                    self.stop_load_snapshot_signal.emit()
+                    break
+                self.begin_writing_signal.emit(dev)
+                val = self.read(dev, num)
+                self.value_list[dev] = val
+                self.end_writing_signal.emit(dev)
+                num += 1
+        #self.dev_list = None
         self.stop_thread = False
         self.read_completed_signal.emit(self.value_list)
 
-    def read(self, name):
-        for x in range(90000000):
-                pass
-        return dev_attr_value[name]
-        #time.sleep(1) 
+    def read(self, dev, num):
+        #for x in range(90000000):
+        #        pass
+        time.sleep(randint(1, 3))
+        return dev_attr_value[num]
 
     def get_values(self):
         return self.value_list

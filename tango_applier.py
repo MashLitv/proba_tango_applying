@@ -23,6 +23,7 @@ val_list = {
 
 
 
+
 class TangoApplier(QObject):
     """docstring for TangoApplier"""
     def __init__(self):
@@ -40,16 +41,23 @@ class TangoApplier(QObject):
         device_list = {}
         attr_value_list = {}
         for name, path in loading_list.items():
+            if not path:
+                print("not path for name:", name)
+                continue
+
             el = path.split('/')
             dev_name = '/'.join(el[:-1])
             attr = el[-1]
+            if not dev_name or not attr:
+                print("not attr or dev for name:", name)
+                continue
+
             if not dev_name in device_list:
                 device_list[dev_name] = []
             device_list[dev_name].append(attr)
 
             if value_list is not None:
                 attr_value_list[path] = value_list[name]
-        
         if value_list is None:
             return device_list
 

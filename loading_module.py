@@ -12,8 +12,8 @@ from threading import Thread
 #namespace = Namespace()
 
 from progress_dialog import ProgressDialog
-from tango_applier import TangoApplier
-#from proba4 import TangoApplier
+#from tango_applier import TangoApplier
+from proba4 import TangoApplier
 
 
 loading_list_ = {
@@ -33,22 +33,45 @@ loading_list_ = {
 dev_attr_value = {
     "var1":13,
     "var2":2,
-    "var3":34.7,
     "var4":155.12
 }
+
+loading_list_ = {
+    "x1" : ("path/ttr/12/attr1"),
+    "x2" : ("path/ttr/45/attr1"),
+    "x3" : ("path/ttr_d/ffr/attr1"),
+    "x4" : ("path/ttr_d/ff_12/attr1"),
+    "x5" : ("path/ttr_d/ff_12/attr2"),
+    "x6" : ("path/ttr_d/ff_12/attr3"),
+    "x7" : ("/attr3"),
+    "x8" : ("path/"),
+    "x9" : (""),}
+
+
+dev_attr_value = {
+    "x1" : 12,
+    "x2" : 32,
+    "x3" : 11,
+    "x4" : 43,
+    "x5" : 133,
+    "x6" : 421,
+    "x7" : 13,
+    "x8" : 555,
+    "x9" : 55,}
 
 
 
 
 class Loading(QObject):
     """docstring for Loading"""
-    def __init__(self, loading_list=None, tango_applier=None, progBar=None):
+    def __init__(self, loading_list=None, tango_applier=None, progBar=None, parent=None):
         super(Loading, self).__init__()
         self.progBar = progBar
         self.loading_list = loading_list
         self.tango_applier = tango_applier
         self.num = 0
         self.count = 0
+        self.parent = parent
 
         #self.tango_applier.begin_writing_signal.connect(self.begin_writing)
         #self.tango_applier.end_writing_signal.connect(self.end_writing)
@@ -60,8 +83,41 @@ class Loading(QObject):
     reading_tango_completed_signal = pyqtSignal(dict)
     tango_loading_completed_signal = pyqtSignal()
 
+
+    def check_tango_loading_list(self, loading_list, value_list=None):
+        fixed_loading_list = {}
+        fixed_value_list = {}
+        error_list = []
+        for name, path in loading_list.items():
+            if not path:
+                #error_list.append("No path for name: "+name)
+                print("no path for name:", name)
+                continue
+
+            el = path.split('/')
+            dev_name = '/'.join(el[:-1])
+            attr = el[-1]
+            if not dev_name or not attr:
+                error_list.append("No attr or dev for name "+name)
+                print("no attr or dev for name:", name)
+                continue
+            fixed_loading_list[name] = path
+
+            if value_list is not None:
+                fixed_value_list[name] = value_list[name]
+        if value_list is None:
+            return fixed_loading_list, error_list
+
+        return fixed_loading_list, fixed_value_list, error_list
+
     def start_read_from_tango(self, loading_list):
         self.tango_applier = TangoApplier()
+
+        loading_list, error_list = self.check_tango_loading_list(loading_list)
+        if error_list:
+            error_message = "Error:\n•  "+'\n•  '.join(error_list)
+            QtWidgets.QMessageBox.critical(self.parent, "Mapping failed", error_message)
+            return
 
         self.num = 0
         self.count = len(loading_list)
@@ -102,6 +158,7 @@ class Loading(QObject):
                 msgBox.setDetailedText(detail_txt)
 
             msgBox.exec()
+        print(self.reverse_loading_list)
         self.reading_tango_completed_signal.emit(value_list)
 
 
@@ -110,6 +167,12 @@ class Loading(QObject):
         self.tango_applier = TangoApplier()
 
         self.num = 0
+        loading_list, value_list, error_list = self.check_tango_loading_list(loading_list, value_list)
+        if error_list:
+            error_message = "Error:\n•  "+'\n•  '.join(error_list)
+            QtWidgets.QMessageBox.critical(self.parent, "Mapping failed", error_message)
+            return
+
         self.count = len(loading_list)
         self.progBar = ProgressDialog(loading_list)
         self.progBar.accepted.connect(self.canel_write_to_tango)
